@@ -68,27 +68,45 @@ def add_gaussian_noise(image, min_sigma=5, max_sigma=25):
 
 
 def process_image(img_path, scale=0.5):
+    """
+    Resize the image, split into 2x2 patches, then apply darken + motion blur
+    + Gaussian noise on each patch.
+
+    Returns a list of (resized_patch, augmented_patch) tuples.
+    """
     img = cv2.imread(img_path)
     if img is None:
         print(f"Skipping unreadable file: {img_path}")
-        return None
+        return []
 
     # Resize (downscale)
     h, w = img.shape[:2]
     new_w = int(w * scale)
     new_h = int(h * scale)
     img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
-    resized_img = img.copy()
-    # Apply random darkening
-    blurred_img = random_darken(img)
 
-    # Apply random-direction motion blur
-    augmented_img = motion_blur(blurred_img)
+    # Split into 2x2 patches
+    mid_w = new_w // 2
+    mid_h = new_h // 2
+    patches = [
+        img[0:mid_h, 0:mid_w],           # top-left
+        img[0:mid_h, mid_w:new_w],       # top-right
+        img[mid_h:new_h, 0:mid_w],       # bottom-left
+        img[mid_h:new_h, mid_w:new_w],   # bottom-right
+    ]
 
-    # Add Gaussian noise
-    augmented_img = add_gaussian_noise(augmented_img)
+    outputs = []
+    for patch in patches:
+        resized_patch = patch.copy()
+        # Apply random darkening
+        darker = random_darken(resized_patch)
+        # Apply random-direction motion blur
+        blurred = motion_blur(darker)
+        # Add Gaussian noise
+        augmented_patch = add_gaussian_noise(blurred)
+        outputs.append((resized_patch, augmented_patch))
 
-    return resized_img, augmented_img
+    return outputs
 
 
 def main():
@@ -100,11 +118,10 @@ def main():
     input_dir = args.input
     output_dir = args.output
 
-    # Create output directory if needed
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir, exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "original"), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "blurred"), exist_ok=True)
+    # Create output directory if needed (always ensure subfolders exist)
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "original"), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "blurred"), exist_ok=True)
 
     # Supported image extensions
     exts = [".jpg", ".jpeg", ".png"]
@@ -123,14 +140,24 @@ def main():
     # Batch processing
     for idx, filename in enumerate(files, start=1):
         in_path = os.path.join(input_dir, filename)
-        resized_out_path = os.path.join(output_dir, "original", f"{idx}.jpg")
-        augmented_out_path = os.path.join(output_dir, "blurred", f"{idx}.jpg")
+        parts = process_image(in_path)
+        if not parts:
+            continue
 
-        print(f"Processing {in_path} -> {resized_out_path} and {augmented_out_path}")
+        for part_idx, (resized_img, augmented_img) in enumerate(parts, start=1):
+            resized_out_path = os.path.join(
+                output_dir, "original", f"{idx}_p{part_idx}.jpg"
+            )
+            augmented_out_path = os.path.join(
+                output_dir, "blurred", f"{idx}_p{part_idx}.jpg"
+            )
 
-        resized_img, augmented_img = process_image(in_path)
-        cv2.imwrite(resized_out_path, resized_img)
-        cv2.imwrite(augmented_out_path, augmented_img)
+            print(
+                f"Processing {in_path} -> {resized_out_path} and {augmented_out_path}"
+            )
+
+            cv2.imwrite(resized_out_path, resized_img)
+            cv2.imwrite(augmented_out_path, augmented_img)
 
     print("All images processed successfully!")
 

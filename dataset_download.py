@@ -1,10 +1,11 @@
 import gdown
 import os
 
-id = '1Xs2xKHQKxAP18sYr6xjHO3A29pAbq5Yg'
+id = '1I1BzIcrML9twWGw0QygcBxXmOywRhONP'
 
-output = 'dataset.tar.gz'
+output = 'cutted_dataset.tar.gz'
 
 gdown.download(id=id, output=output, quiet=False)
 os.system(f'tar -xzvf {output}')
+os.system(f'mv cut_dataset dataset')
 os.remove(output)
