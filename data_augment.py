@@ -5,7 +5,7 @@ import os
 import argparse
 
 
-def random_darken(image, min_factor=0.5, max_factor=0.9):
+def random_darken(image, min_factor=0.2, max_factor=0.9):
     """
     Random darkening: multiply the image by a random factor
     within [min_factor, max_factor].
@@ -78,17 +78,17 @@ def process_image(img_path, scale=0.5):
     new_w = int(w * scale)
     new_h = int(h * scale)
     img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
+    resized_img = img.copy()
     # Apply random darkening
-    img = random_darken(img)
+    blurred_img = random_darken(img)
 
     # Apply random-direction motion blur
-    img = motion_blur(img)
+    augmented_img = motion_blur(blurred_img)
 
     # Add Gaussian noise
-    img = add_gaussian_noise(img)
+    augmented_img = add_gaussian_noise(augmented_img)
 
-    return img
+    return resized_img, augmented_img
 
 
 def main():
@@ -101,7 +101,10 @@ def main():
     output_dir = args.output
 
     # Create output directory if needed
-    os.makedirs(output_dir, exist_ok=True)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "original"), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "blurred"), exist_ok=True)
 
     # Supported image extensions
     exts = [".jpg", ".jpeg", ".png"]
@@ -120,13 +123,14 @@ def main():
     # Batch processing
     for idx, filename in enumerate(files, start=1):
         in_path = os.path.join(input_dir, filename)
-        out_path = os.path.join(output_dir, f"{idx}.jpg")
+        resized_out_path = os.path.join(output_dir, "original", f"{idx}.jpg")
+        augmented_out_path = os.path.join(output_dir, "blurred", f"{idx}.jpg")
 
-        print(f"Processing {in_path} -> {out_path}")
+        print(f"Processing {in_path} -> {resized_out_path} and {augmented_out_path}")
 
-        processed = process_image(in_path)
-        if processed is not None:
-            cv2.imwrite(out_path, processed)
+        resized_img, augmented_img = process_image(in_path)
+        cv2.imwrite(resized_out_path, resized_img)
+        cv2.imwrite(augmented_out_path, augmented_img)
 
     print("All images processed successfully!")
 
