@@ -118,10 +118,11 @@ def main():
     input_dir = args.input
     output_dir = args.output
 
-    # Create output directory if needed (always ensure subfolders exist)
-    os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(os.path.join(output_dir, "original"), exist_ok=True)
-    os.makedirs(os.path.join(output_dir, "blurred"), exist_ok=True)
+    # Create output directory if needed
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "original"), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "blurred"), exist_ok=True)
 
     # Supported image extensions
     exts = [".jpg", ".jpeg", ".png"]
@@ -140,7 +141,7 @@ def main():
     # Batch processing
     for idx, filename in enumerate(files, start=1):
         in_path = os.path.join(input_dir, filename)
-        parts = process_image(in_path)
+        parts = process_image(in_path, 0.1)
         if not parts:
             continue
 
