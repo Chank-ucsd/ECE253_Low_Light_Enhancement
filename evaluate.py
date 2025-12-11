@@ -5,6 +5,7 @@ from PIL import Image
 from glob import glob
 from natsort import natsorted
 import csv
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 
 def compute_snr(image1, image2):
@@ -46,6 +47,16 @@ def compute_snr(image1, image2):
         snr = float('inf')
     
     return snr
+
+
+def compute_psnr(image1, image2):
+    """Calculate Peak Signal-to-Noise Ratio (PSNR) between two images."""
+    return peak_signal_noise_ratio(image1, image2, data_range=1.0)
+
+
+def compute_ssim(image1, image2):
+    """Calculate Structural Similarity Index (SSIM) between two images."""
+    return structural_similarity(image1, image2, channel_axis=2, data_range=1.0)
 
 
 def load_image(image_path):
@@ -92,11 +103,11 @@ def match_image_files(files1, files2):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Calculate SNR between images in two directories')
+    parser = argparse.ArgumentParser(description='Calculate SNR, PSNR and SSIM between image pairs in two directories')
     parser.add_argument('--input_dir', '-i', type=str, required=True,
-                        help='Input directory 1 (signal/reference images)')
+                        help='Input directory 1 (noisy/processed images)')
     parser.add_argument('--label_dir', '-l', type=str, required=True,
-                        help='Label directory 2 (noisy/processed images)')
+                        help='Label directory 2 (signal/reference images)')
     parser.add_argument('--output_dir', '-o', type=str, required=True,
                         help='Output directory for results')
     
@@ -132,9 +143,11 @@ def main():
     print(f"Found {len(matched_pairs)} matching image pairs")
     print("-" * 60)
     
-    # Calculate SNR for each pair
+    # Calculate metrics for each pair
     results = []
     snr_values = []
+    psnr_values = []
+    ssim_values = []
     
     for file1, file2, base_name in matched_pairs:
         try:
@@ -152,17 +165,23 @@ def main():
                 img2_pil = img2_pil.resize(img1_pil.size, Image.Resampling.LANCZOS)
                 img2 = np.array(img2_pil)
             
-            # Calculate SNR
+            # Calculate metrics
             snr = compute_snr(img1, img2)
+            psnr = compute_psnr(img1, img2)
+            ssim = compute_ssim(img1, img2)
             snr_values.append(snr)
+            psnr_values.append(psnr)
+            ssim_values.append(ssim)
             results.append({
                 'filename': base_name,
                 'input_file': os.path.basename(file1),
                 'label_file': os.path.basename(file2),
-                'SNR': snr
+                'SNR': snr,
+                'PSNR': psnr,
+                'SSIM': ssim
             })
             
-            print(f"{base_name}: SNR = {snr:.4f} dB")
+            print(f"{base_name}: SNR = {snr:.4f} dB | PSNR = {psnr:.4f} dB | SSIM = {ssim:.4f}")
             
         except Exception as e:
             print(f"Error processing {base_name}: {str(e)}")
@@ -174,6 +193,14 @@ def main():
         std_snr = np.std(snr_values)
         min_snr = np.min(snr_values)
         max_snr = np.max(snr_values)
+        mean_psnr = np.mean(psnr_values)
+        std_psnr = np.std(psnr_values)
+        min_psnr = np.min(psnr_values)
+        max_psnr = np.max(psnr_values)
+        mean_ssim = np.mean(ssim_values)
+        std_ssim = np.std(ssim_values)
+        min_ssim = np.min(ssim_values)
+        max_ssim = np.max(ssim_values)
         
         print("-" * 60)
         print(f"Statistics:")
@@ -182,11 +209,25 @@ def main():
         print(f"  Std SNR: {std_snr:.4f} dB")
         print(f"  Min SNR: {min_snr:.4f} dB")
         print(f"  Max SNR: {max_snr:.4f} dB")
+        print("-" * 60)
+        print("\n")
+        print(f"  Mean PSNR: {mean_psnr:.4f} dB")
+        print(f"  Std PSNR: {std_psnr:.4f} dB")
+        print(f"  Min PSNR: {min_psnr:.4f} dB")
+        print(f"  Max PSNR: {max_psnr:.4f} dB")
+        print("-" * 60)
+        print("\n")
+        print(f"  Mean SSIM: {mean_ssim:.4f}")
+        print(f"  Std SSIM: {std_ssim:.4f}")
+        print(f"  Min SSIM: {min_ssim:.4f}")
+        print(f"  Max SSIM: {max_ssim:.4f}")
+        print("-" * 60)
+        print("\n")
         
         # Save results to CSV
         csv_path = os.path.join(args.output_dir, 'snr_results.csv')
         with open(csv_path, 'w', newline='') as csvfile:
-            fieldnames = ['filename', 'input_file', 'label_file', 'SNR']
+            fieldnames = ['filename', 'input_file', 'label_file', 'SNR', 'PSNR', 'SSIM']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(results)
@@ -196,20 +237,37 @@ def main():
         # Save summary to text file
         summary_path = os.path.join(args.output_dir, 'snr_summary.txt')
         with open(summary_path, 'w') as f:
-            f.write("SNR Evaluation Summary\n")
-            f.write("=" * 60 + "\n\n")
+            f.write("Image Quality Evaluation Summary\n")
+            f.write("=" * 60 + "\n")
             f.write(f"Input directory: {args.input_dir}\n")
             f.write(f"Label directory: {args.label_dir}\n\n")
             f.write(f"Total images: {len(snr_values)}\n")
             f.write(f"Mean SNR: {mean_snr:.4f} dB\n")
             f.write(f"Std SNR: {std_snr:.4f} dB\n")
             f.write(f"Min SNR: {min_snr:.4f} dB\n")
-            f.write(f"Max SNR: {max_snr:.4f} dB\n\n")
-            f.write("-" * 60 + "\n")
+            f.write(f"Max SNR: {max_snr:.4f} dB\n")
+            f.write("-" * 60)
+            f.write("\n")
+            f.write(f"Mean PSNR: {mean_psnr:.4f} dB\n")
+            f.write(f"Std PSNR: {std_psnr:.4f} dB\n")
+            f.write(f"Min PSNR: {min_psnr:.4f} dB\n")
+            f.write(f"Max PSNR: {max_psnr:.4f} dB\n")
+            f.write("-" * 60)
+            f.write("\n")
+            f.write(f"Mean SSIM: {mean_ssim:.4f}\n")
+            f.write(f"Std SSIM: {std_ssim:.4f}\n")
+            f.write(f"Min SSIM: {min_ssim:.4f}\n")
+            f.write(f"Max SSIM: {max_ssim:.4f}\n")
+            f.write("-" * 60)
+            f.write("\n")
             f.write("Individual Results:\n")
-            f.write("-" * 60 + "\n")
             for result in results:
-                f.write(f"{result['filename']}: {result['SNR']:.4f} dB\n")
+                f.write(
+                    f"{result['filename']}: "
+                    f"SNR={result['SNR']:.4f} dB, "
+                    f"PSNR={result['PSNR']:.4f} dB, "
+                    f"SSIM={result['SSIM']:.4f}\n"
+                )
         
         print(f"Summary saved to {summary_path}")
 
