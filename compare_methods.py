@@ -55,15 +55,23 @@ print(" method_comparison.csv")
 
 def plot_metric(df, metric, save_name):
     plt.figure(figsize=(8, 5))
+
     x = np.arange(len(df["Method"]))
-    y = df[metric]
+    y = df[metric].values
 
-    bars = plt.bar(x, y, color=["#4a90e2", "#50e3c2", "#f5a623", "#d0021b"])
+    colors = ["#4a90e2", "#50e3c2", "#f5a623", "#d0021b"]
+    bars = plt.bar(x, y, color=colors)
 
-    for bar in bars:
+    for bar, value in zip(bars, y):
         height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2, height,
-                 f"{height:.2f}", ha='center', va='bottom')
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            height,
+            f"{value:.4f}",  
+            ha='center',
+            va='bottom',
+            fontsize=10
+        )
 
     plt.xticks(x, df["Method"], rotation=20)
     plt.ylabel(metric)
@@ -72,7 +80,8 @@ def plot_metric(df, metric, save_name):
     plt.savefig(save_name)
     plt.close()
 
-    print(f"store: {save_name}")
+    print(f"Saved → {save_name}")
+
 
 # ------------------------------------------------------
 #（SNR / PSNR / SSIM）
