@@ -75,7 +75,7 @@ def plot_metric(df, metric, save_name):
     print(f"store: {save_name}")
 
 # ------------------------------------------------------
-# 画图（SNR / PSNR / SSIM）
+#（SNR / PSNR / SSIM）
 # ------------------------------------------------------
 plot_metric(df, "Mean SNR", "comparison_snr.png")
 plot_metric(df, "Mean PSNR", "comparison_psnr.png")
