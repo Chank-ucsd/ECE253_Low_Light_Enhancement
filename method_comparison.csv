@@ -1,0 +1,5 @@
+Method,Mean SNR,Mean PSNR,Mean SSIM
+DCE_only,8.9409,-33.3684,0.0549
+histogram,6.0131,-37.4359,0.0551
+restormer,9.443,-32.8038,0.0751
+richardsonLucy,5.367,-34.6442,0.0465
